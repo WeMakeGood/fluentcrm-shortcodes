@@ -130,7 +130,7 @@ class Contact_Query {
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$meta_value = $wpdb->get_var(
-			$wpdb->prepare( "SELECT value FROM {$table} WHERE subscriber_id = %d AND key = %s AND object_type = 'custom_field' LIMIT 1", $contact_id, $meta_key )
+			$wpdb->prepare( "SELECT `value` FROM {$table} WHERE subscriber_id = %d AND `key` = %s AND object_type = 'custom_field' LIMIT 1", $contact_id, $meta_key )
 		);
 
 		return $meta_value ?: null;
@@ -161,7 +161,7 @@ class Contact_Query {
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$meta_data = $wpdb->get_results(
-			$wpdb->prepare( "SELECT key, value FROM {$table} WHERE subscriber_id = %d AND object_type = 'custom_field' ORDER BY key ASC", $contact_id ),
+			$wpdb->prepare( "SELECT `key`, `value` FROM {$table} WHERE subscriber_id = %d AND object_type = 'custom_field' ORDER BY `key` ASC", $contact_id ),
 			ARRAY_A
 		);
 

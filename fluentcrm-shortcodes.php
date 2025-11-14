@@ -142,6 +142,33 @@ class Contact_Query {
 	public static function is_safe_field( $field_name ) {
 		return in_array( $field_name, self::$safe_fields, true );
 	}
+
+	/**
+	 * Get all meta keys for a contact (for debugging).
+	 *
+	 * @param int $contact_id The FluentCRM contact ID.
+	 * @return array Array of meta keys and values.
+	 */
+	public static function get_all_contact_meta( $contact_id ) {
+		global $wpdb;
+
+		$table = $wpdb->prefix . 'fc_subscriber_meta';
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$meta_data = $wpdb->get_results(
+			$wpdb->prepare( "SELECT meta_key, meta_value FROM {$table} WHERE subscriber_id = %d", $contact_id ),
+			ARRAY_A
+		);
+
+		$result = array();
+		if ( $meta_data ) {
+			foreach ( $meta_data as $item ) {
+				$result[ $item['meta_key'] ] = $item['meta_value'];
+			}
+		}
+
+		return $result;
+	}
 }
 
 /**
@@ -360,10 +387,15 @@ class FluentCRM_Contact_Shortcode {
 				'not_found'        => '',
 				'condition'        => '',
 				'condition_value'  => '',
+				'debug'            => '',
 			),
 			$atts,
 			'fluentcrm_contact'
 		);
+
+		// Check if debug mode is enabled (admin only).
+		$debug = ! empty( $atts['debug'] ) && current_user_can( 'manage_options' );
+		$debug_output = array();
 
 		// Validate that field is provided.
 		if ( empty( $atts['field'] ) ) {
@@ -375,12 +407,31 @@ class FluentCRM_Contact_Shortcode {
 		// Get the contact ID.
 		$contact_id = self::get_contact_id( $atts );
 		if ( ! $contact_id ) {
+			if ( $debug ) {
+				return '<pre style="background:#f5f5f5;padding:10px;border:1px solid #ddd;">DEBUG: Contact not found</pre>';
+			}
 			return esc_html( $atts['not_found'] );
+		}
+
+		if ( $debug ) {
+			$debug_output[] = "Contact ID: {$contact_id}";
+			$debug_output[] = "Field requested: {$field}";
+			$debug_output[] = "Is safe field: " . ( Contact_Query::is_safe_field( $field ) ? 'yes' : 'no' );
+			$debug_output[] = "\nAll available meta keys:";
+			$all_meta = Contact_Query::get_all_contact_meta( $contact_id );
+			foreach ( $all_meta as $key => $val ) {
+				$debug_output[] = "  - {$key}: " . substr( (string) $val, 0, 50 );
+			}
 		}
 
 		// Get the field value.
 		$value = Contact_Query::get_contact_field( $contact_id, $field );
 		if ( $value === null ) {
+			if ( $debug ) {
+				$debug_msg = implode( "\n", $debug_output );
+				$debug_msg .= "\n\nField not found or returned null";
+				return '<pre style="background:#f5f5f5;padding:10px;border:1px solid #ddd;">' . esc_html( $debug_msg ) . '</pre>';
+			}
 			return esc_html( $atts['not_found'] );
 		}
 

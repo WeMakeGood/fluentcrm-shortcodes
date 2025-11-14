@@ -391,6 +391,8 @@ class FluentCRM_Contact_Shortcode {
 
 			if ( Contact_Conditional::evaluate( $value, $condition, $condition_value ) ) {
 				// Condition is true; return the shortcode content (nested usage).
+				// Replace {value} placeholder in content if present.
+				$content = str_replace( '{value}', esc_html( (string) $value ), $content );
 				return do_shortcode( $content );
 			} else {
 				// Condition is false; return empty.

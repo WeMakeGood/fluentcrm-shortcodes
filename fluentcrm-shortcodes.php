@@ -7,7 +7,7 @@
  * Author URI:      https://wemakegood.com
  * Text Domain:     fluentcrm-shortcodes
  * Domain Path:     /languages
- * Version:         0.1.0
+ * Version:         0.1.1
  *
  * @package         Fluentcrm_Shortcodes
  */
@@ -218,7 +218,8 @@ class Contact_Formatter {
 
 		// Try regex formatting if it looks like a regex pattern.
 		if ( strpos( $format, '/' ) !== false && strpos( $format, '|' ) !== false ) {
-			return self::format_regex( $value, $format );
+			$result = self::format_regex( $value, $format );
+			return $result;
 		}
 
 		// Fallback: return value as-is.
@@ -270,8 +271,11 @@ class Contact_Formatter {
 	 *
 	 * Format: "pattern|replacement" where pattern uses regex syntax with capture groups.
 	 * Examples:
-	 * - "/^(\d{4})-(\d{2})-(\d{2})/|$2/$3/$1" transforms "2023-11-14" to "11/14/2023"
-	 * - "/(\w+)/|[$1]" wraps words in brackets
+	 * - "/^(d{4})-(d{2})-(d{2})/|$2/$3/$1" transforms "2023-11-14" to "11/14/2023"
+	 * - "/(w+)/|[$1]" wraps words in brackets
+	 *
+	 * Note: Due to WordPress shortcode attribute parsing, backslashes may be stripped.
+	 * The formatter automatically handles patterns with or without leading backslashes.
 	 *
 	 * @param mixed  $value       The value to format.
 	 * @param string $format_spec The format specification (pattern|replacement).
@@ -286,12 +290,53 @@ class Contact_Formatter {
 		$pattern     = $parts[0];
 		$replacement = $parts[1];
 
+		// Handle missing backslashes in common regex patterns.
+		// WordPress may strip backslashes, so convert common patterns like "d" to "\d".
+		$pattern = self::restore_regex_backslashes( $pattern );
+
 		try {
-			return preg_replace( $pattern, $replacement, (string) $value );
+			// Use @ error suppression for preg_replace to avoid warnings on invalid patterns.
+			$result = @preg_replace( $pattern, $replacement, (string) $value );
+			return $result !== null ? $result : (string) $value;
 		} catch ( \Exception $e ) {
 			// If regex fails, return the value as-is.
 			return (string) $value;
 		}
+	}
+
+	/**
+	 * Restore common regex backslashes that may have been stripped by WordPress.
+	 *
+	 * Converts patterns like "(d{4})" to "(\d{4})" and "(w+)" to "(\w+)".
+	 * This handles the case where WordPress strips leading backslashes from shortcode attributes.
+	 *
+	 * @param string $pattern The regex pattern with possibly missing backslashes.
+	 * @return string The pattern with backslashes restored.
+	 */
+	private static function restore_regex_backslashes( $pattern ) {
+		// Common regex character classes that may lose their backslashes.
+		$replacements = array(
+			'/\\(d/' => '/\\d',       // (d -> (\d
+			'/\\(w/' => '/\\w',       // (w -> (\w
+			'/\\(s/' => '/\\s',       // (s -> (\s
+			'/(d\\{/'  => '/(\\d\\{', // (d{ -> (\d{
+			'/(w\\+)/' => '/(\\w+)/', // (w+) -> (\w+)
+			'/(s\\+)/' => '/(\\s+)/', // (s+) -> (\s+)
+		);
+
+		// More direct approach: replace patterns like "d{" with "\d{" inside the pattern.
+		// This works for patterns in brackets.
+		$pattern = preg_replace_callback(
+			'/\(([dws])([\\{\\+\\?\\*]|$)/',
+			function ( $matches ) {
+				$char = $matches[1];
+				$quantifier = $matches[2] ?? '';
+				return '(\\' . $char . $quantifier;
+			},
+			$pattern
+		);
+
+		return $pattern;
 	}
 }
 
@@ -440,6 +485,27 @@ class FluentCRM_Contact_Shortcode {
 			return esc_html( $atts['not_found'] );
 		}
 
+		// Format the value if a format string is provided (before conditionals).
+		// This ensures {value} in conditional blocks gets the formatted value.
+		if ( ! empty( $atts['format'] ) ) {
+			// Don't use sanitize_text_field for format strings as it strips regex/sprintf special chars.
+			// Preserve formatting syntax while preventing HTML/script injection.
+			$format = $atts['format'];
+
+			// Temporary debug output
+			if ( $debug ) {
+				$debug_output[] = "\n\nFORMATTING DEBUG:";
+				$debug_output[] = "Format string: " . var_export( $format, true );
+				$debug_output[] = "Value before format: " . var_export( (string) $value, true );
+			}
+
+			$value = Contact_Formatter::format_value( $value, $format );
+
+			if ( $debug ) {
+				$debug_output[] = "Value after format: " . var_export( (string) $value, true );
+			}
+		}
+
 		// If a condition is specified, evaluate it.
 		if ( ! empty( $atts['condition'] ) ) {
 			$condition       = sanitize_text_field( $atts['condition'] );
@@ -447,7 +513,7 @@ class FluentCRM_Contact_Shortcode {
 
 			if ( Contact_Conditional::evaluate( $value, $condition, $condition_value ) ) {
 				// Condition is true; return the shortcode content (nested usage).
-				// Replace {value} placeholder in content if present.
+				// Replace {value} placeholder in content if present (now with formatted value).
 				$content = str_replace( '{value}', esc_html( (string) $value ), $content );
 				return do_shortcode( $content );
 			} else {
@@ -456,10 +522,10 @@ class FluentCRM_Contact_Shortcode {
 			}
 		}
 
-		// Format the value if a format string is provided.
-		if ( ! empty( $atts['format'] ) ) {
-			$format = sanitize_text_field( $atts['format'] );
-			$value  = Contact_Formatter::format_value( $value, $format );
+		// If debug mode, return formatted output with debug info.
+		if ( $debug ) {
+			$debug_msg = implode( "\n", $debug_output );
+			return '<pre style="background:#f5f5f5;padding:10px;border:1px solid #ddd;">' . esc_html( $debug_msg ) . '</pre>';
 		}
 
 		// Return the formatted value, escaped for HTML.

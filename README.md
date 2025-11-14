@@ -121,9 +121,13 @@ Professional formatting using PHP sprintf syntax:
 ### Regex Formatting
 Pattern-based transformation with capture groups:
 ```
-[fluentcrm_contact field="date" format="/^(\d{4})-(\d{2})-(\d{2})/|$2/$3/$1"]  # Date reformatting
-[fluentcrm_contact field="text" format="/(\w+)/|[$1]"]   # Wrap words in brackets
+[fluentcrm_contact field="date" format="/^(d{4})-(d{2})-(d{2})/|$2/$3/$1"]  # Date reformatting
+[fluentcrm_contact field="text" format="/(w+)/|[$1]"]   # Wrap words in brackets
 ```
+
+**Note:** Due to WordPress attribute parsing, backslashes are automatically restored. You can write patterns with or without leading backslashes - both work:
+- `/^(d{4})-(d{2})-(d{2})/|$2/$3/$1` ✓ (recommended in shortcodes)
+- `/^(\d{4})-(\d{2})-(\d{2})/|$2/$3/$1` ✓ (also works)
 
 ## Conditional Logic
 
@@ -139,7 +143,7 @@ Pattern-based transformation with capture groups:
 
 ### Using {value} in Conditionals
 
-When a condition is true, the nested content displays with `{value}` replaced:
+When a condition is true, the nested content displays with `{value}` replaced. If a format is specified, the formatted value is used:
 
 ```
 [fluentcrm_contact field="external_id" condition="isset"]
@@ -148,6 +152,15 @@ When a condition is true, the nested content displays with `{value}` replaced:
   </a>
 [/fluentcrm_contact]
 ```
+
+Example with formatting (date reformatting in nested content):
+```
+[fluentcrm_contact field="legacy_first_order_date" format="/^(d{4})-(d{2})-(d{2}).*/|$2/$3/$1" condition="isset"]
+  <p>Your first order was on {value}</p>
+[/fluentcrm_contact]
+```
+
+In this case, `{value}` will be replaced with the formatted date (e.g., `02/13/2025`), not the raw timestamp.
 
 ## Advanced Examples
 
@@ -254,9 +267,11 @@ Main shortcode handler:
 
 ### Formatting not working?
 
-- **Template syntax** uses `{value}` placeholder
-- **Sprintf** requires `%` in format string
-- **Regex** requires `/pattern/|replacement` format
+- **Template syntax** uses `{value}` placeholder (e.g., `format="Hello {value}!"`)
+- **Sprintf** requires `%` in format string (e.g., `format="$%.2f"`)
+- **Regex** requires `/pattern/|replacement` format (e.g., `format="/^(d{4})-(d{2})-(d{2})/|$2/$3/$1"`)
+- **WordPress parsing**: WordPress may strip backslashes from patterns - write patterns with or without `\` (both work)
+- **Debug mode**: Use `debug="1"` (admin only) to see what format string is being received and the before/after values
 
 ### Not seeing any output?
 
@@ -293,6 +308,13 @@ For issues, questions, or feature requests, please open an issue on GitHub:
 https://github.com/WeMakeGood/fluentcrm-shortcodes/issues
 
 ## Changelog
+
+### 0.1.1
+- Fixed regex formatting by restoring backslashes stripped by WordPress attribute parsing
+- Fixed formatting being applied before conditionals so `{value}` in conditional blocks gets formatted values
+- Added comprehensive debug output showing format string, values before/after formatting
+- Improved regex pattern auto-detection to handle patterns without leading backslashes
+- Enhanced documentation with regex formatting examples and troubleshooting tips
 
 ### 0.1.0
 - Initial release

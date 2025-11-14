@@ -4,7 +4,7 @@ Tags: fluentcrm, shortcode, contact, crm
 Requires at least: 5.0
 Tested up to: 6.8.3
 Requires PHP: 7.2
-Stable tag: 0.1.0
+Stable tag: 0.1.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -232,6 +232,13 @@ Yes, using regex. Any strtotime-compatible date can be reformatted with regex ca
 * No sensitive fields exposed in debug output
 
 == Changelog ==
+
+= 0.1.1 =
+* Fixed regex formatting by restoring backslashes stripped by WordPress attribute parsing
+* Fixed formatting being applied before conditionals so {value} in conditional blocks gets formatted values
+* Added comprehensive debug output showing format string, values before/after formatting
+* Improved regex pattern auto-detection to handle patterns without leading backslashes
+* Enhanced documentation with regex formatting examples and troubleshooting tips
 
 = 0.1.0 =
 * Initial release

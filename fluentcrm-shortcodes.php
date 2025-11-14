@@ -148,23 +148,25 @@ class Contact_Query {
  * ============================================================================
  * CONTACT FORMATTER CLASS
  * ============================================================================
- * Handles formatting of contact field values using sprintf and regex patterns.
+ * Handles formatting of contact field values using sprintf, regex, and template syntax.
  *
  * Public Methods:
  * - format_value( $value, $format ) : string
  * - format_sprintf( $value, $format_string ) : string
+ * - format_template( $value, $template ) : string
  * - format_regex( $value, $pattern, $replacement ) : string
  */
 class Contact_Formatter {
 
 	/**
-	 * Format a value using either sprintf or regex based on the format string.
+	 * Format a value using sprintf, regex, or curly brace template syntax.
 	 *
 	 * Sprintf format: "%.2f" for currency, "%s" for strings, "%d" for integers, etc.
 	 * Regex format: Use pipe-separated pattern|replacement (e.g., "/^\d{4}/|YEAR")
+	 * Template format: Use {value} to embed the field value (e.g., "Welcome, {value}!")
 	 *
 	 * @param mixed  $value  The value to format.
-	 * @param string $format The format string (sprintf or regex pattern).
+	 * @param string $format The format string (sprintf, regex, or template pattern).
 	 * @return string The formatted value.
 	 */
 	public static function format_value( $value, $format ) {
@@ -172,7 +174,12 @@ class Contact_Formatter {
 			return (string) $value;
 		}
 
-		// Try sprintf formatting first (more common).
+		// Try curly brace template syntax first.
+		if ( strpos( $format, '{value}' ) !== false ) {
+			return self::format_template( $value, $format );
+		}
+
+		// Try sprintf formatting.
 		if ( strpos( $format, '%' ) !== false ) {
 			return self::format_sprintf( $value, $format );
 		}
@@ -206,6 +213,24 @@ class Contact_Formatter {
 			// If sprintf fails, return the value as-is.
 			return (string) $value;
 		}
+	}
+
+	/**
+	 * Format a value using curly brace template syntax.
+	 *
+	 * The {value} placeholder will be replaced with the actual field value.
+	 *
+	 * Examples:
+	 * - "Welcome, {value}!" with "John" => "Welcome, John!"
+	 * - "Your balance is ${value}" with "42.50" => "Your balance is $42.50"
+	 * - "Contact: {value}" with "user@example.com" => "Contact: user@example.com"
+	 *
+	 * @param mixed  $value    The value to embed.
+	 * @param string $template The template string with {value} placeholder.
+	 * @return string The formatted value.
+	 */
+	public static function format_template( $value, $template ) {
+		return str_replace( '{value}', (string) $value, $template );
 	}
 
 	/**

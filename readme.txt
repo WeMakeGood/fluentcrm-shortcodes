@@ -1,115 +1,252 @@
 === FluentCRM Shortcodes ===
-Contributors: (this should be a list of wordpress.org userid's)
-Donate link: https://example.com/
-Tags: comments, spam
-Requires at least: 4.5
+Contributors: WeMakeGood
+Tags: fluentcrm, shortcode, contact, crm
+Requires at least: 5.0
 Tested up to: 6.8.3
-Requires PHP: 5.6
+Requires PHP: 7.2
 Stable tag: 0.1.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Here is a short description of the plugin.  This should be no more than 150 characters.  No markup here.
+Display FluentCRM contact information dynamically using simple shortcodes.
 
 == Description ==
 
-This is the long description.  No limit, and you can use Markdown (as well as in the following sections).
+FluentCRM Shortcodes allows you to display FluentCRM contact information anywhere on your WordPress site using simple, flexible shortcodes. Retrieve standard contact fields, custom fields, and format the output with sprintf, regex patterns, or template syntax.
 
-For backwards compatibility, if this section is missing, the full length of the short description will be used, and
-Markdown parsed.
+**Key Features:**
 
-A few notes about the sections above:
-
-*   "Contributors" is a comma separated list of wp.org/wp-plugins.org usernames
-*   "Tags" is a comma separated list of tags that apply to the plugin
-*   "Requires at least" is the lowest version that the plugin will work on
-*   "Tested up to" is the highest version that you've *successfully used to test the plugin*. Note that it might work on
-higher versions... this is just the highest one you've verified.
-*   Stable tag should indicate the Subversion "tag" of the latest stable version, or "trunk," if you use `/trunk/` for
-stable.
-
-    Note that the `readme.txt` of the stable tag is the one that is considered the defining one for the plugin, so
-if the `/trunk/readme.txt` file says that the stable tag is `4.3`, then it is `/tags/4.3/readme.txt` that'll be used
-for displaying information about the plugin.  In this situation, the only thing considered from the trunk `readme.txt`
-is the stable tag pointer.  Thus, if you develop in trunk, you can update the trunk `readme.txt` to reflect changes in
-your in-development version, without having that information incorrectly disclosed about the current stable version
-that lacks those changes -- as long as the trunk's `readme.txt` points to the correct stable tag.
-
-    If no stable tag is provided, it is assumed that trunk is stable, but you should specify "trunk" if that's where
-you put the stable version, in order to eliminate any doubt.
+* Display any FluentCRM contact field or custom field
+* Multiple formatting options (sprintf, regex, or template syntax)
+* Conditional display based on field values
+* Admin-only testing parameter for specific contacts
+* Debug mode to troubleshoot field lookups
+* Security-focused with field whitelisting and admin-only features
+* Prepared SQL statements to prevent injection
 
 == Installation ==
 
-This section describes how to install the plugin and get it working.
+1. Upload the `fluentcrm-shortcodes` folder to `/wp-content/plugins/`
+2. Activate the plugin through the WordPress admin Plugins menu
+3. Use the shortcodes in pages, posts, or any shortcode-enabled area
 
-e.g.
+== Usage ==
 
-1. Upload `plugin-name.php` to the `/wp-content/plugins/` directory
-1. Activate the plugin through the 'Plugins' menu in WordPress
-1. Place `<?php do_action('plugin_name_hook'); ?>` in your templates
+=== Basic Shortcode ===
 
-== Frequently Asked Questions ==
+Display a contact's email address (for the currently logged-in user):
 
-= A question that someone might have =
+`[fluentcrm_contact field="email"]`
 
-An answer to that question.
+Display a custom field (like Classy ID):
 
-= What about foo bar? =
+`[fluentcrm_contact field="classy_id"]`
 
-Answer to foo bar dilemma.
+=== Available Fields ===
 
-== Screenshots ==
+**Standard Fields (Whitelisted):**
 
-1. This screen shot description corresponds to screenshot-1.(png|jpg|jpeg|gif). Note that the screenshot is taken from
-the /assets directory or the directory that contains the stable readme.txt (tags or trunk). Screenshots in the /assets
-directory take precedence. For example, `/assets/screenshot-1.png` would win over `/tags/4.3/screenshot-1.png`
-(or jpg, jpeg, gif).
-2. This is the second screen shot
+* `email`
+* `first_name`
+* `last_name`
+* `phone`
+* `city`
+* `state`
+* `postal_code`
+* `country`
+* `timezone`
+
+**Custom Fields:**
+
+Any custom field name can be used (e.g., `classy_id`, `givebutter_id`, `legacy_total_order_value`, etc.)
+
+=== Formatting Output ===
+
+**Template Syntax** - Embed value in text:
+
+`[fluentcrm_contact field="first_name" format="Welcome, {value}!"]`
+
+Output: `Welcome, John!`
+
+**Sprintf Formatting** - Professional formatting:
+
+Currency (2 decimal places):
+`[fluentcrm_contact field="legacy_total_order_value" format="$%.2f"]`
+Output: `$87.12`
+
+Integers with leading zeros:
+`[fluentcrm_contact field="legacy_total_order_count" format="%03d"]`
+Output: `016`
+
+String formatting:
+`[fluentcrm_contact field="email" format="Contact: %s"]`
+Output: `Contact: user@example.com`
+
+**Regex Formatting** - Pattern-based transformation:
+
+Transform date format (YYYY-MM-DD to MM/DD/YYYY):
+`[fluentcrm_contact field="legacy_first_order_date" format="/^(\d{4})-(\d{2})-(\d{2})/|$2/$3/$1"]`
+Output: `02/13/2025`
+
+=== Conditional Display ===
+
+Display content only if a field exists (isset):
+
+`[fluentcrm_contact field="classy_id" condition="isset"]
+  <a href="https://classy.org/login?id={value}">Login to Classy</a>
+[/fluentcrm_contact]`
+
+The `{value}` placeholder is replaced with the field value inside nested content.
+
+**Available Conditions:**
+
+* `isset` - Field exists and is not empty
+* `equals` - Field equals a specific value
+* `greater_than` - Field is numerically greater than a value
+* `less_than` - Field is numerically less than a value
+* `contains` - Field contains a substring
+
+**Examples:**
+
+Show link if user has a Givebutter ID:
+
+`[fluentcrm_contact field="givebutter_id" condition="isset"]
+  <a href="https://givebutter.com/user/{value}">View Givebutter Profile</a>
+[/fluentcrm_contact]`
+
+Show message if total orders greater than 10:
+
+`[fluentcrm_contact field="legacy_total_order_count" condition="greater_than" condition_value="10"]
+  <p>Thank you for being a loyal supporter with over 10 orders!</p>
+[/fluentcrm_contact]`
+
+=== All Attributes ===
+
+* `field` (required) - Contact field or custom meta key to display
+* `format` (optional) - Format string for output (sprintf, regex, or template syntax)
+* `condition` (optional) - Conditional logic type (isset, equals, greater_than, less_than, contains)
+* `condition_value` (optional) - Value to compare against for conditions
+* `user_id` (optional) - FluentCRM contact ID to display (admin only, for testing)
+* `not_found` (optional) - Text to display if contact or field not found (default: empty string)
+* `debug` (optional) - Show debug information (admin only, use `debug="1"`)
+
+=== Admin-Only Testing ===
+
+Test a specific contact by ID (requires admin privileges):
+
+`[fluentcrm_contact field="classy_id" user_id="42"]`
+
+Combined with formatting:
+
+`[fluentcrm_contact field="legacy_total_order_value" user_id="42" format="$%.2f"]`
+
+=== Debug Mode ===
+
+Enable debug output to troubleshoot field lookups (admin only):
+
+`[fluentcrm_contact field="classy_id" debug="1"]`
+
+This displays:
+* Contact ID found
+* Field name requested
+* Whether it's a safe field or custom field
+* All available custom fields for this contact
+* Whether the requested field was found
+
+=== Not Found Handling ===
+
+Specify fallback text if contact or field not found:
+
+`[fluentcrm_contact field="classy_id" not_found="No Classy ID found"]`
+
+== Examples ==
+
+**Display user's name:**
+
+`Hello, [fluentcrm_contact field="first_name"]!`
+
+**Format donor's lifetime value:**
+
+`Your lifetime giving: [fluentcrm_contact field="legacy_total_order_value" format="$%.2f"]`
+
+**Show external login link (if account exists):**
+
+`[fluentcrm_contact field="classy_id" condition="isset"]
+  <a href="https://classy.org/dashboard?uid={value}" class="btn btn-primary">
+    Login to Classy Dashboard
+  </a>
+[/fluentcrm_contact]`
+
+**Display formatted order date:**
+
+`Your first order was on: [fluentcrm_contact field="legacy_first_order_date" format="/^(\d{4})-(\d{2})-(\d{2})/|$2/$3/$1"]`
+
+**Show VIP message for high-value donors:**
+
+`[fluentcrm_contact field="legacy_total_order_value" condition="greater_than" condition_value="500"]
+  <p class="vip-badge">You're a VIP supporter!</p>
+[/fluentcrm_contact]`
+
+== FAQ ==
+
+= Why doesn't my custom field show up? =
+
+Use debug mode to see available fields:
+
+`[fluentcrm_contact field="my_field" debug="1"]`
+
+Check that your field name matches exactly (case-sensitive). Common issues:
+* Field name has spaces or special characters
+* Field hasn't been saved for this contact yet
+* Field uses a different storage location
+
+= Can I use this shortcode in widgets? =
+
+Yes, if your theme/page builder supports shortcodes in widgets. Some page builders like Elementor have special support for this.
+
+= Does this shortcode work for non-logged-in users? =
+
+No. The shortcode requires a logged-in user (it uses the current user's email to look up their FluentCRM contact). Use the `user_id` parameter with an admin account to display specific contacts for testing.
+
+= Can I nest multiple shortcodes? =
+
+Yes. The plugin uses WordPress's `do_shortcode()` function inside conditional blocks, so you can nest shortcodes with `[fluentcrm_contact]...[other-shortcode]...[/fluentcrm_contact]`.
+
+= What happens if a user isn't in FluentCRM? =
+
+The `not_found` text will display. No error is shown to regular users.
+
+= Can I format dates in any format? =
+
+Yes, using regex. Any strtotime-compatible date can be reformatted with regex capture groups:
+
+`[fluentcrm_contact field="order_date" format="/^(\d{4})-(\d{2})-(\d{2})/|$3/$2/$1"]` converts 2025-11-14 to 14/11/2025
+
+== Security ==
+
+* Field access is restricted to a whitelist of safe standard fields
+* Custom fields are queried from `_fc_subscriber_meta` only
+* All database queries use prepared statements
+* Output is escaped with `esc_html()`
+* Admin-only features (`user_id`, `debug`) are permission-checked
+* No sensitive fields exposed in debug output
 
 == Changelog ==
 
-= 1.0 =
-* A change since the previous version.
-* Another change.
+= 0.1.0 =
+* Initial release
+* Display FluentCRM contact fields and custom fields
+* Support for sprintf, regex, and template formatting
+* Conditional display with multiple comparison types
+* Debug mode for troubleshooting
+* Admin-only testing with user_id parameter
+* Comprehensive security implementation
 
-= 0.5 =
-* List versions from most recent at top to oldest at bottom.
+== Support ==
 
-== Upgrade Notice ==
+For issues, questions, or contributions, visit:
+https://github.com/WeMakeGood/fluentcrm-shortcodes
 
-= 1.0 =
-Upgrade notices describe the reason a user should upgrade.  No more than 300 characters.
+== License ==
 
-= 0.5 =
-This version fixes a security related bug.  Upgrade immediately.
-
-== Arbitrary section ==
-
-You may provide arbitrary sections, in the same format as the ones above.  This may be of use for extremely complicated
-plugins where more information needs to be conveyed that doesn't fit into the categories of "description" or
-"installation."  Arbitrary sections will be shown below the built-in sections outlined above.
-
-== A brief Markdown Example ==
-
-Ordered list:
-
-1. Some feature
-1. Another feature
-1. Something else about the plugin
-
-Unordered list:
-
-* something
-* something else
-* third thing
-
-Here's a link to [WordPress](https://wordpress.org/ "Your favorite software") and one to [Markdown's Syntax Documentation][markdown syntax].
-Titles are optional, naturally.
-
-[markdown syntax]: https://daringfireball.net/projects/markdown/syntax
-            "Markdown is what the parser uses to process much of the readme file"
-
-Markdown uses email style notation for blockquotes and I've been told:
-> Asterisks for *emphasis*. Double it up  for **strong**.
-
-`<?php code(); // goes in backticks ?>`
+This plugin is licensed under the GPLv2 or later. See LICENSE for details.

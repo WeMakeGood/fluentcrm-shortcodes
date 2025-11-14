@@ -116,6 +116,9 @@ class Contact_Query {
 	/**
 	 * Get a custom field value from _fc_subscriber_meta.
 	 *
+	 * Custom fields in FluentCRM are stored with object_type = 'custom_field'.
+	 * This method queries only custom fields, not system options.
+	 *
 	 * @param int    $contact_id The FluentCRM contact ID.
 	 * @param string $meta_key   The meta key to retrieve.
 	 * @return mixed|null The meta value or null if not found.
@@ -127,7 +130,7 @@ class Contact_Query {
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$meta_value = $wpdb->get_var(
-			$wpdb->prepare( "SELECT meta_value FROM {$table} WHERE subscriber_id = %d AND meta_key = %s LIMIT 1", $contact_id, $meta_key )
+			$wpdb->prepare( "SELECT value FROM {$table} WHERE subscriber_id = %d AND key = %s AND object_type = 'custom_field' LIMIT 1", $contact_id, $meta_key )
 		);
 
 		return $meta_value ?: null;
@@ -144,10 +147,12 @@ class Contact_Query {
 	}
 
 	/**
-	 * Get all meta keys for a contact (for debugging).
+	 * Get all custom field meta keys for a contact (for debugging).
+	 *
+	 * Only returns custom_field object_type entries, not system options.
 	 *
 	 * @param int $contact_id The FluentCRM contact ID.
-	 * @return array Array of meta keys and values.
+	 * @return array Array of custom field keys and values.
 	 */
 	public static function get_all_contact_meta( $contact_id ) {
 		global $wpdb;
@@ -156,14 +161,14 @@ class Contact_Query {
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$meta_data = $wpdb->get_results(
-			$wpdb->prepare( "SELECT meta_key, meta_value FROM {$table} WHERE subscriber_id = %d", $contact_id ),
+			$wpdb->prepare( "SELECT key, value FROM {$table} WHERE subscriber_id = %d AND object_type = 'custom_field' ORDER BY key ASC", $contact_id ),
 			ARRAY_A
 		);
 
 		$result = array();
 		if ( $meta_data ) {
 			foreach ( $meta_data as $item ) {
-				$result[ $item['meta_key'] ] = $item['meta_value'];
+				$result[ $item['key'] ] = $item['value'];
 			}
 		}
 
